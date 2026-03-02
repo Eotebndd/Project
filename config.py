@@ -10,5 +10,8 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", None)
 MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
 
-DATA_PATH = os.getenv("DATA_PATH", "titanic_cleaned.csv")
+UPLOAD_DIR = os.getenv("UPLOAD_DIR", "uploads")
 OUTPUT_DIR = os.getenv("OUTPUT_DIR", "output_plots")
+
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(OUTPUT_DIR, exist_ok=True)
