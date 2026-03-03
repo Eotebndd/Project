@@ -6,8 +6,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", None)
+OPENAI_API_KEY = os.getenv("API_KEY", "")
+OPENAI_BASE_URL = os.getenv("BASE_URL", None)
 MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
 
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "uploads")

@@ -219,53 +219,150 @@
         }
         
         .message-text {
-            line-height: 1.6;
-            white-space: pre-wrap;
+            line-height: 1.7;
         }
         
-        .thinking-section {
-            margin-top: 12px;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            overflow: hidden;
+        .message-text h1, .message-text h2, .message-text h3 {
+            margin-top: 16px;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #111827;
         }
         
-        .thinking-header {
-            background: #f9fafb;
-            padding: 10px 14px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 13px;
+        .message-text h1 { font-size: 1.5em; }
+        .message-text h2 { font-size: 1.3em; }
+        .message-text h3 { font-size: 1.1em; }
+        
+        .message-text p {
+            margin-bottom: 12px;
+        }
+        
+        .message-text ul, .message-text ol {
+            margin-left: 20px;
+            margin-bottom: 12px;
+        }
+        
+        .message-text li {
+            margin-bottom: 4px;
+        }
+        
+        .message-text strong {
+            font-weight: 600;
+            color: #111827;
+        }
+        
+        .message-text em {
+            font-style: italic;
             color: #6b7280;
         }
         
-        .thinking-header:hover {
+        .message-text code {
             background: #f3f4f6;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
         }
         
-        .thinking-arrow {
-            transition: transform 0.2s;
+        .message-text pre {
+            background: #1f2937;
+            color: #e5e7eb;
+            padding: 12px 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin-bottom: 12px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            line-height: 1.5;
         }
         
-        .thinking-arrow.open {
-            transform: rotate(180deg);
+        .message-text pre code {
+            background: transparent;
+            padding: 0;
+            color: inherit;
+        }
+        
+        .message-text table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+        
+        .message-text th, .message-text td {
+            border: 1px solid #e5e7eb;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        
+        .message-text th {
+            background: #f9fafb;
+            font-weight: 600;
+        }
+        
+        .message-text tr:nth-child(even) {
+            background: #f9fafb;
+        }
+        
+        .message-text blockquote {
+            border-left: 4px solid #10a37f;
+            padding-left: 16px;
+            margin: 12px 0;
+            color: #6b7280;
+        }
+        
+        .message-text hr {
+            border: none;
+            border-top: 1px solid #e5e7eb;
+            margin: 16px 0;
+        }
+        
+        .thinking-bubble {
+            background: #fef3c7;
+            border: 1px solid #fcd34d;
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-bottom: 12px;
+            font-size: 14px;
+            color: #92400e;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        
+        .thinking-bubble.hidden {
+            display: none;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .thinking-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+        
+        .thinking-spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #fcd34d;
+            border-top-color: #92400e;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
         
         .thinking-content {
-            display: none;
-            padding: 14px;
-            background: #fefce8;
             font-size: 13px;
-            color: #713f12;
             white-space: pre-wrap;
-            max-height: 300px;
+            max-height: 200px;
             overflow-y: auto;
-        }
-        
-        .thinking-content.show {
-            display: block;
         }
         
         .message-images {
@@ -277,6 +374,7 @@
         
         .message-images img {
             max-width: 100%;
+            max-height: 400px;
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             cursor: pointer;
@@ -351,27 +449,6 @@
             fill: white;
         }
         
-        .loading-dots {
-            display: inline-flex;
-            gap: 4px;
-        }
-        
-        .loading-dots span {
-            width: 8px;
-            height: 8px;
-            background: #10a37f;
-            border-radius: 50%;
-            animation: bounce 1.4s infinite ease-in-out both;
-        }
-        
-        .loading-dots span:nth-child(1) { animation-delay: -0.32s; }
-        .loading-dots span:nth-child(2) { animation-delay: -0.16s; }
-        
-        @keyframes bounce {
-            0%, 80%, 100% { transform: scale(0); }
-            40% { transform: scale(1); }
-        }
-        
         .image-modal {
             display: none;
             position: fixed;
@@ -394,15 +471,6 @@
             max-width: 90%;
             max-height: 90%;
             border-radius: 8px;
-        }
-        
-        .error-message {
-            background: #fef2f2;
-            border: 1px solid #fecaca;
-            color: #dc2626;
-            padding: 12px 16px;
-            border-radius: 8px;
-            margin-top: 10px;
         }
         
         @media (max-width: 768px) {
@@ -573,7 +641,7 @@
             addMessage('user', message);
             input.value = '';
             
-            await processMessage(message);
+            await processMessageStream(message);
         }
         
         async function sendMessage() {
@@ -586,26 +654,18 @@
             input.value = '';
             input.style.height = 'auto';
             
-            await processMessage(message);
+            await processMessageStream(message);
         }
         
-        async function processMessage(message) {
+        async function processMessageStream(message) {
             const sendBtn = document.getElementById('sendBtn');
             sendBtn.disabled = true;
             
-            const loadingDiv = document.createElement('div');
-            loadingDiv.className = 'message assistant';
-            loadingDiv.innerHTML = `
-                <div class="message-avatar">🤖</div>
-                <div class="message-content">
-                    <div class="loading-dots"><span></span><span></span><span></span></div>
-                </div>
-            `;
-            document.getElementById('chatMessages').appendChild(loadingDiv);
-            scrollToBottom();
+            const thinkingId = 'thinking-' + Date.now();
+            addThinkingBubble(thinkingId);
             
             try {
-                const response = await fetch('/api/chat', {
+                const response = await fetch('/api/chat/stream', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
@@ -614,42 +674,132 @@
                     })
                 });
                 
-                const data = await response.json();
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
                 
-                loadingDiv.remove();
-                
-                if (response.ok) {
-                    addMessage('assistant', data.response, data.thinking, data.image_paths);
-                } else {
-                    addMessage('assistant', `错误: ${data.detail}`, '', []);
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const text = decoder.decode(value);
+                    const lines = text.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = JSON.parse(line.slice(6));
+                            
+                            if (data.type === 'thinking') {
+                                updateThinkingBubble(thinkingId, data.content);
+                            } else if (data.type === 'done') {
+                                removeThinkingBubble(thinkingId);
+                                addMessage('assistant', data.content, data.image_paths);
+                            } else if (data.type === 'error') {
+                                removeThinkingBubble(thinkingId);
+                                addMessage('assistant', `错误: ${data.content}`, []);
+                            }
+                        }
+                    }
                 }
             } catch (error) {
-                loadingDiv.remove();
-                addMessage('assistant', `请求失败: ${error.message}`, '', []);
+                removeThinkingBubble(thinkingId);
+                addMessage('assistant', `请求失败: ${error.message}`, []);
             }
             
             sendBtn.disabled = false;
         }
         
-        function addMessage(role, content, thinking = '', imagePaths = []) {
+        function addThinkingBubble(id) {
+            const messagesDiv = document.getElementById('chatMessages');
+            const bubble = document.createElement('div');
+            bubble.id = id;
+            bubble.className = 'message assistant';
+            bubble.innerHTML = `
+                <div class="message-avatar">🤖</div>
+                <div class="message-content">
+                    <div class="thinking-bubble">
+                        <div class="thinking-title">
+                            <div class="thinking-spinner"></div>
+                            <span>正在思考...</span>
+                        </div>
+                        <div class="thinking-content" id="${id}-content"></div>
+                    </div>
+                </div>
+            `;
+            messagesDiv.appendChild(bubble);
+            scrollToBottom();
+        }
+        
+        function updateThinkingBubble(id, content) {
+            const contentDiv = document.getElementById(id + '-content');
+            if (contentDiv) {
+                contentDiv.textContent = content;
+            }
+            scrollToBottom();
+        }
+        
+        function removeThinkingBubble(id) {
+            const bubble = document.getElementById(id);
+            if (bubble) {
+                bubble.remove();
+            }
+        }
+        
+        function parseMarkdown(text) {
+            if (!text) return '';
+            
+            text = text.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
+                return `<pre><code>${escapeHtml(code.trim())}</code></pre>`;
+            });
+            
+            text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+            
+            text = text.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+            text = text.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+            text = text.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+            
+            text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
+            
+            text = text.replace(/^[-*] (.+)$/gm, '<li>$1</li>');
+            text = text.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+            
+            text = text.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+            
+            text = text.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>');
+            
+            text = text.replace(/^---$/gm, '<hr>');
+            
+            const tableRegex = /^\|(.+)\|\s*\n\|[-:\s|]+\|\s*\n((?:\|.+\|\s*\n?)+)/gm;
+            text = text.replace(tableRegex, (match, header, body) => {
+                const headers = header.split('|').filter(h => h.trim()).map(h => `<th>${h.trim()}</th>`).join('');
+                const rows = body.trim().split('\n').map(row => {
+                    const cells = row.replace(/^\||\|$/g, '').split('|').map(c => `<td>${c.trim()}</td>`).join('');
+                    return `<tr>${cells}</tr>`;
+                }).join('');
+                return `<table><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
+            });
+            
+            text = text.replace(/\n\n/g, '</p><p>');
+            text = text.replace(/\n/g, '<br>');
+            
+            text = text.replace(/=== (.+?) ===/g, '<h2>$1</h2>');
+            text = text.replace(/【(.+?)】/g, '<strong>【$1】</strong>');
+            
+            return '<p>' + text + '</p>';
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function addMessage(role, content, imagePaths = []) {
             const messagesDiv = document.getElementById('chatMessages');
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${role}`;
             
             const avatar = role === 'user' ? '👤' : '🤖';
-            
-            let thinkingHtml = '';
-            if (thinking) {
-                thinkingHtml = `
-                    <div class="thinking-section">
-                        <div class="thinking-header" onclick="toggleThinking(this)">
-                            <span>💭 思考过程</span>
-                            <span class="thinking-arrow">▼</span>
-                        </div>
-                        <div class="thinking-content">${escapeHtml(thinking)}</div>
-                    </div>
-                `;
-            }
             
             let imagesHtml = '';
             if (imagePaths && imagePaths.length > 0) {
@@ -658,12 +808,13 @@
                 </div>`;
             }
             
+            const formattedContent = role === 'assistant' ? parseMarkdown(content) : escapeHtml(content);
+            
             messageDiv.innerHTML = `
                 <div class="message-avatar">${avatar}</div>
                 <div class="message-content">
-                    <div class="message-text">${escapeHtml(content)}</div>
-                    ${thinkingHtml}
                     ${imagesHtml}
+                    <div class="message-text">${formattedContent}</div>
                 </div>
             `;
             
@@ -671,22 +822,9 @@
             scrollToBottom();
         }
         
-        function toggleThinking(header) {
-            const content = header.nextElementSibling;
-            const arrow = header.querySelector('.thinking-arrow');
-            content.classList.toggle('show');
-            arrow.classList.toggle('open');
-        }
-        
         function scrollToBottom() {
             const messagesDiv = document.getElementById('chatMessages');
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        }
-        
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
         }
         
         function showImageModal(src) {

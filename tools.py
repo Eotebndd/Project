@@ -17,7 +17,6 @@ from typing import Type, Optional, Dict, Any
 from pydantic import BaseModel, Field
 import warnings
 import config
-import json
 
 warnings.filterwarnings('ignore')
 
@@ -31,7 +30,8 @@ def set_session_data(session_id: str, df: pd.DataFrame, file_path: str):
     _session_data[session_id] = {
         'df': df,
         'file_path': file_path,
-        'output_dir': os.path.join(config.OUTPUT_DIR, session_id)
+        'output_dir': os.path.join(config.OUTPUT_DIR, session_id),
+        'image_paths': []
     }
     os.makedirs(_session_data[session_id]['output_dir'], exist_ok=True)
 
@@ -50,20 +50,31 @@ def get_output_dir(session_id: str) -> str:
         return data['output_dir']
     return config.OUTPUT_DIR
 
+def add_image_path(session_id: str, path: str):
+    global _session_data
+    if session_id in _session_data:
+        _session_data[session_id]['image_paths'].append(path)
+
+def get_and_clear_image_paths(session_id: str) -> list:
+    global _session_data
+    if session_id in _session_data:
+        paths = _session_data[session_id]['image_paths'].copy()
+        _session_data[session_id]['image_paths'] = []
+        return paths
+    return []
+
 
 class DataSummaryInput(BaseModel):
-    query: str = Field(description="用户关于数据摘要的问题")
-    session_id: str = Field(description="会话ID")
+    query: str = Field(default="", description="用户关于数据摘要的问题")
 
 
 class DataSummaryTool(BaseTool):
     name: str = "data_summary"
-    description: str = "获取数据的统计摘要信息，包括均值、方差、最大值、最小值、计数等统计量。适用于任何CSV数据集。"
+    description: str = "获取数据的统计摘要信息，包括均值、方差、最大值、最小值、计数等统计量。适用于任何CSV数据集。输入参数query为用户的问题。"
     args_schema: Type[BaseModel] = DataSummaryInput
     
-    def _run(self, query: str, session_id: str = None) -> str:
-        if session_id is None:
-            session_id = getattr(self, '_session_id', None)
+    def _run(self, query: str = "") -> str:
+        session_id = getattr(self, '_session_id', None)
         
         df = get_df(session_id)
         if df is None:
@@ -72,54 +83,67 @@ class DataSummaryTool(BaseTool):
         numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
         cat_cols = df.select_dtypes(include=['object']).columns.tolist()
         
-        result = "=== 数据统计摘要 ===\n\n"
-        result += f"数据集形状: {df.shape[0]} 行, {df.shape[1]} 列\n\n"
-        
-        result += f"列名: {list(df.columns)}\n\n"
+        result = "## 数据统计摘要\n\n"
+        result += f"**数据集形状**: {df.shape[0]} 行, {df.shape[1]} 列\n\n"
+        result += f"**列名**: {', '.join(df.columns.tolist())}\n\n"
         
         if numeric_cols:
-            result += "【数值型列统计】\n"
+            result += "### 数值型列统计\n\n"
             summary_stats = df[numeric_cols].describe()
-            result += summary_stats.to_string()
-            result += "\n\n"
-        
-        if cat_cols:
-            result += "【分类型列统计】\n"
-            for col in cat_cols[:5]:
-                unique_count = df[col].nunique()
-                result += f"  {col}: {unique_count} 个唯一值\n"
-            if len(cat_cols) > 5:
-                result += f"  ... 还有 {len(cat_cols) - 5} 个分类型列\n"
+            
+            stat_rows = ['count', 'mean', 'std', 'min', '25%', '50%', '75%', 'max']
+            cols = list(summary_stats.columns)
+            
+            header = "| 统计量 | " + " | ".join(cols) + " |"
+            separator = "|--------|" + "|".join(["--------" for _ in cols]) + "|"
+            
+            result += header + "\n"
+            result += separator + "\n"
+            
+            for stat in stat_rows:
+                if stat in summary_stats.index:
+                    values = [f"{summary_stats.loc[stat, col]:.2f}" for col in cols]
+                    row = f"| {stat} | " + " | ".join(values) + " |"
+                    result += row + "\n"
             result += "\n"
         
-        result += "【缺失值统计】\n"
+        if cat_cols:
+            result += "### 分类型列统计\n\n"
+            result += "| 列名 | 唯一值数量 |\n|------|------------|\n"
+            for col in cat_cols[:5]:
+                unique_count = df[col].nunique()
+                result += f"| {col} | {unique_count} |\n"
+            if len(cat_cols) > 5:
+                result += f"| ... | 还有 {len(cat_cols) - 5} 列 |\n"
+            result += "\n"
+        
+        result += "### 缺失值统计\n\n"
         missing = df.isnull().sum()
         missing_cols = missing[missing > 0]
         if len(missing_cols) > 0:
+            result += "| 列名 | 缺失数量 | 缺失比例 |\n|------|----------|----------|\n"
             for col, count in missing_cols.items():
-                result += f"  {col}: {count} ({count/len(df)*100:.1f}%)\n"
+                result += f"| {col} | {count} | {count/len(df)*100:.1f}% |\n"
         else:
-            result += "  无缺失值\n"
+            result += "无缺失值\n"
         
         return result
     
-    async def _arun(self, query: str, session_id: str = None) -> str:
-        return self._run(query, session_id)
+    async def _arun(self, query: str = "") -> str:
+        return self._run(query)
 
 
 class DataVisualizationInput(BaseModel):
-    query: str = Field(description="用户关于数据可视化的问题")
-    session_id: str = Field(description="会话ID")
+    query: str = Field(default="", description="用户关于数据可视化的问题，例如'画出Age列的分布图'")
 
 
 class DataVisualizationTool(BaseTool):
     name: str = "data_visualization"
-    description: str = "对数据进行可视化绘图。可以绘制分布图、柱状图、饼图、散点图等。支持任意列名。"
+    description: str = "对数据进行可视化绘图。可以绘制分布图、柱状图、饼图、相关性热力图等。支持同时绘制多个图表。输入参数query中应包含要绘制的列名或图表类型。"
     args_schema: Type[BaseModel] = DataVisualizationInput
     
-    def _run(self, query: str, session_id: str = None) -> str:
-        if session_id is None:
-            session_id = getattr(self, '_session_id', None)
+    def _run(self, query: str = "") -> str:
+        session_id = getattr(self, '_session_id', None)
         
         df = get_df(session_id)
         if df is None:
@@ -135,25 +159,184 @@ class DataVisualizationTool(BaseTool):
             numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
             cat_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
             
-            target_col = None
+            # 检测相关性热力图请求
+            if "correlation" in query_lower or "相关" in query_lower or "热力图" in query_lower:
+                return self._plot_correlation(df, output_dir, session_id)
+            
+            # 检测散点图请求
+            if "scatter" in query_lower or "散点" in query_lower:
+                return self._plot_scatter(df, query_lower, columns, numeric_cols, output_dir, session_id)
+            
+            # 检测折线图请求
+            if "line" in query_lower or "折线" in query_lower or "趋势" in query_lower:
+                return self._plot_line(df, query_lower, columns, numeric_cols, output_dir, session_id)
+            
+            # 检测饼图请求
+            if "pie" in query_lower or "饼图" in query_lower:
+                return self._plot_pie(df, query_lower, columns, cat_cols, output_dir, session_id)
+            
+            # 智能匹配列名
+            mentioned_cols = []
             for col in columns:
                 col_lower = col.lower()
+                # 精确匹配或包含匹配
                 if col_lower in query_lower or col in query:
-                    target_col = col
-                    break
+                    mentioned_cols.append(col)
+                # 处理列名中的空格和特殊字符
+                elif any(word in query_lower for word in col_lower.replace('_', ' ').split()):
+                    mentioned_cols.append(col)
             
-            if target_col:
-                return self._plot_column(df, target_col, output_dir)
+            # 去重
+            mentioned_cols = list(dict.fromkeys(mentioned_cols))
             
-            if "correlation" in query_lower or "相关" in query_lower:
-                return self._plot_correlation(df, output_dir)
+            if len(mentioned_cols) > 1:
+                return self._plot_multiple_columns(df, mentioned_cols, output_dir, session_id, query_lower)
             
-            return self._plot_overview(df, output_dir)
+            if mentioned_cols:
+                return self._plot_column(df, mentioned_cols[0], output_dir, session_id, query_lower)
+            
+            return self._plot_overview(df, output_dir, session_id)
             
         except Exception as e:
             return f"绘图时发生错误: {str(e)}"
     
-    def _plot_column(self, df, col, output_dir):
+    def _plot_multiple_columns(self, df, cols, output_dir, session_id, query_lower=""):
+        results = []
+        
+        # 检测是否需要绘制对比图
+        if "对比" in query_lower or "compare" in query_lower or len(cols) == 2:
+            return self._plot_comparison(df, cols, output_dir, session_id)
+        
+        for col in cols:
+            result = self._plot_column(df, col, output_dir, session_id, query_lower)
+            results.append(result)
+        return "\n\n".join(results)
+    
+    def _plot_comparison(self, df, cols, output_dir, session_id):
+        """绘制两列对比图"""
+        if len(cols) < 2:
+            return "需要至少两列进行对比"
+        
+        fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+        
+        col1, col2 = cols[0], cols[1]
+        
+        # 散点图
+        if df[col1].dtype in ['int64', 'float64'] and df[col2].dtype in ['int64', 'float64']:
+            axes[0].scatter(df[col1], df[col2], alpha=0.5, color='#45b7d1')
+            axes[0].set_xlabel(col1)
+            axes[0].set_ylabel(col2)
+            axes[0].set_title(f'{col1} vs {col2}')
+            
+            # 分布对比
+            axes[1].hist(df[col1].dropna(), bins=30, alpha=0.5, label=col1, color='#45b7d1')
+            axes[1].hist(df[col2].dropna(), bins=30, alpha=0.5, label=col2, color='#ff6b6b')
+            axes[1].legend()
+            axes[1].set_title('Distribution Comparison')
+        else:
+            # 分类数据对比
+            for i, col in enumerate([col1, col2]):
+                value_counts = df[col].value_counts().head(10)
+                axes[i].barh(range(len(value_counts)), value_counts.values, color='#4ecdc4')
+                axes[i].set_yticks(range(len(value_counts)))
+                axes[i].set_yticklabels(value_counts.index.astype(str))
+                axes[i].set_title(f'{col} Distribution')
+        
+        plt.tight_layout()
+        save_path = os.path.join(output_dir, f"{col1}_{col2}_comparison.png")
+        plt.savefig(save_path, dpi=150, bbox_inches='tight')
+        plt.close()
+        
+        add_image_path(session_id, save_path)
+        return f"已成功绘制 '{col1}' 和 '{col2}' 的对比图！"
+    
+    def _plot_scatter(self, df, query_lower, columns, numeric_cols, output_dir, session_id):
+        """绘制散点图"""
+        if len(numeric_cols) < 2:
+            return "数值列不足，无法绘制散点图"
+        
+        # 尝试识别x和y列
+        x_col, y_col = None, None
+        for col in numeric_cols:
+            if f'x={col.lower()}' in query_lower or f'x是{col.lower()}' in query_lower:
+                x_col = col
+            if f'y={col.lower()}' in query_lower or f'y是{col.lower()}' in query_lower:
+                y_col = col
+        
+        if not x_col or not y_col:
+            # 使用前两个数值列
+            x_col, y_col = numeric_cols[0], numeric_cols[1]
+        
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.scatter(df[x_col], df[y_col], alpha=0.5, color='#45b7d1')
+        ax.set_xlabel(x_col)
+        ax.set_ylabel(y_col)
+        ax.set_title(f'Scatter Plot: {x_col} vs {y_col}')
+        
+        plt.tight_layout()
+        save_path = os.path.join(output_dir, f"scatter_{x_col}_{y_col}.png")
+        plt.savefig(save_path, dpi=150, bbox_inches='tight')
+        plt.close()
+        
+        add_image_path(session_id, save_path)
+        return f"已成功绘制 '{x_col}' vs '{y_col}' 的散点图！"
+    
+    def _plot_line(self, df, query_lower, columns, numeric_cols, output_dir, session_id):
+        """绘制折线图"""
+        if not numeric_cols:
+            return "无数值列可绘制折线图"
+        
+        mentioned_cols = [col for col in numeric_cols if col.lower() in query_lower]
+        if not mentioned_cols:
+            mentioned_cols = numeric_cols[:3]
+        
+        fig, ax = plt.subplots(figsize=(12, 6))
+        for col in mentioned_cols:
+            ax.plot(df[col].values, label=col, alpha=0.7)
+        
+        ax.set_xlabel('Index')
+        ax.set_ylabel('Value')
+        ax.set_title('Line Chart')
+        ax.legend()
+        
+        plt.tight_layout()
+        save_path = os.path.join(output_dir, "line_chart.png")
+        plt.savefig(save_path, dpi=150, bbox_inches='tight')
+        plt.close()
+        
+        add_image_path(session_id, save_path)
+        return f"已成功绘制折线图！"
+    
+    def _plot_pie(self, df, query_lower, columns, cat_cols, output_dir, session_id):
+        """绘制饼图"""
+        target_col = None
+        for col in columns:
+            if col.lower() in query_lower:
+                target_col = col
+                break
+        
+        if not target_col:
+            if cat_cols:
+                target_col = cat_cols[0]
+            else:
+                target_col = columns[0]
+        
+        value_counts = df[target_col].value_counts().head(10)
+        
+        fig, ax = plt.subplots(figsize=(10, 8))
+        ax.pie(value_counts.values, labels=value_counts.index.astype(str),
+               autopct='%1.1f%%', startangle=90)
+        ax.set_title(f'{target_col} Pie Chart')
+        
+        plt.tight_layout()
+        save_path = os.path.join(output_dir, f"{target_col}_pie.png")
+        plt.savefig(save_path, dpi=150, bbox_inches='tight')
+        plt.close()
+        
+        add_image_path(session_id, save_path)
+        return f"已成功绘制 '{target_col}' 的饼图！"
+    
+    def _plot_column(self, df, col, output_dir, session_id, query_lower=""):
         fig, axes = plt.subplots(1, 2, figsize=(14, 5))
         
         if df[col].dtype in ['int64', 'float64']:
@@ -196,9 +379,10 @@ class DataVisualizationTool(BaseTool):
         plt.savefig(save_path, dpi=150, bbox_inches='tight')
         plt.close()
         
-        return f"已成功绘制 '{col}' 列的分布图！\n图表路径: {save_path}"
+        add_image_path(session_id, save_path)
+        return f"已成功绘制 '{col}' 列的分布图！"
     
-    def _plot_correlation(self, df, output_dir):
+    def _plot_correlation(self, df, output_dir, session_id):
         numeric_df = df.select_dtypes(include=[np.number])
         if numeric_df.shape[1] < 2:
             return "数值列不足，无法绘制相关性热力图"
@@ -226,15 +410,15 @@ class DataVisualizationTool(BaseTool):
         plt.savefig(save_path, dpi=150, bbox_inches='tight')
         plt.close()
         
-        return f"已成功绘制相关性热力图！\n图表路径: {save_path}"
+        add_image_path(session_id, save_path)
+        return f"已成功绘制相关性热力图！"
     
-    def _plot_overview(self, df, output_dir):
+    def _plot_overview(self, df, output_dir, session_id):
         numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()[:4]
         
         if not numeric_cols:
             return "无数值列可绘制"
         
-        n_cols = len(numeric_cols)
         fig, axes = plt.subplots(2, 2, figsize=(14, 10))
         axes = axes.flatten()
         
@@ -255,25 +439,24 @@ class DataVisualizationTool(BaseTool):
         plt.savefig(save_path, dpi=150, bbox_inches='tight')
         plt.close()
         
-        return f"已成功绘制数据概览图！\n图表路径: {save_path}"
+        add_image_path(session_id, save_path)
+        return f"已成功绘制数据概览图！"
     
-    async def _arun(self, query: str, session_id: str = None) -> str:
-        return self._run(query, session_id)
+    async def _arun(self, query: str = "") -> str:
+        return self._run(query)
 
 
 class ModelTrainingInput(BaseModel):
-    query: str = Field(description="用户关于模型训练和预测的问题，需要指定目标列名")
-    session_id: str = Field(description="会话ID")
+    query: str = Field(default="", description="用户关于模型训练和预测的问题，需要指定目标列名，例如'训练模型预测Survived列'")
 
 
 class ModelTrainingTool(BaseTool):
     name: str = "model_training"
-    description: str = "使用sklearn训练机器学习模型进行预测。需要指定目标列（target column）。自动处理分类和回归任务。"
+    description: str = "使用sklearn训练机器学习模型进行预测。输入参数query中需要指定目标列名（target column）。自动处理分类和回归任务。"
     args_schema: Type[BaseModel] = ModelTrainingInput
     
-    def _run(self, query: str, session_id: str = None) -> str:
-        if session_id is None:
-            session_id = getattr(self, '_session_id', None)
+    def _run(self, query: str = "") -> str:
+        session_id = getattr(self, '_session_id', None)
         
         df = get_df(session_id)
         if df is None:
@@ -397,9 +580,10 @@ class ModelTrainingTool(BaseTool):
         for _, row in feature_importance.iterrows():
             result += f"  {row['feature']}: {row['importance']:.4f}\n"
         
-        self._plot_model_results(model, X_test, y_test, y_pred, feature_importance, 
+        save_path = self._plot_model_results(model, X_test, y_test, y_pred, feature_importance, 
                                  is_classification, output_dir)
-        result += f"\n图表已保存至: {output_dir}"
+        session_id = getattr(self, '_session_id', None)
+        add_image_path(session_id, save_path)
         
         return result
     
@@ -441,9 +625,10 @@ class ModelTrainingTool(BaseTool):
         save_path = os.path.join(output_dir, "model_results.png")
         plt.savefig(save_path, dpi=150, bbox_inches='tight')
         plt.close()
+        return save_path
     
-    async def _arun(self, query: str, session_id: str = None) -> str:
-        return self._run(query, session_id)
+    async def _arun(self, query: str = "") -> str:
+        return self._run(query)
 
 
 def get_tools(session_id: str = None):

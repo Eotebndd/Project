@@ -26,7 +26,7 @@ def create_agent():
     tools = get_tools()
     
     prompt = PromptTemplate.from_template(
-        """你是一个专业的数据分析助手，帮助用户分析泰坦尼克号数据集。
+        """你是一个专业的数据分析助手。
 
 你可以使用以下工具:
 
@@ -34,16 +34,18 @@ def create_agent():
 
 工具名称: {tool_names}
 
-使用工具时，请遵循以下格式:
+使用工具时，请严格遵循以下格式（每行必须独立，不能跨行）:
 
 Question: 用户的问题
-Thought: 你应该思考要做什么
+Thought: 简短思考要做什么（必须在一行内完成，不要换行）
 Action: 要使用的工具名称，必须是 [{tool_names}] 中的一个
 Action Input: 工具的输入参数
 Observation: 工具的输出结果
 ... (这个 Thought/Action/Action Input/Observation 可以重复N次)
 Thought: 我现在知道最终答案了
 Final Answer: 对用户问题的最终回答
+
+重要提示: Thought 必须是单行，不能包含换行符
 
 开始!
 
@@ -93,34 +95,6 @@ def run_interactive(agent_executor):
             break
         except Exception as e:
             print(f"\n发生错误: {str(e)}")
-
-
-def demo_features(agent_executor):
-    print("\n" + "="*70)
-    print("演示泰坦尼克号数据探索Agent的三个核心功能")
-    print("="*70)
-    
-    questions = [
-        ("功能1: 数据摘要统计", "请给我数据的统计摘要，包括均值、方差、最大最小值等"),
-        ("功能2: 数据可视化", "请画出Survived列的分布图"),
-        ("功能3: 模型训练与预测", "请训练一个机器学习模型来预测Survived，并给出预测结果")
-    ]
-    
-    for title, question in questions:
-        print("\n" + "="*70)
-        print(f"【{title}】")
-        print(f"用户问题: {question}")
-        print("="*70 + "\n")
-        
-        try:
-            result = agent_executor.invoke({"input": question})
-            print("Agent回答:")
-            print("-"*50)
-            print(result["output"])
-        except Exception as e:
-            print(f"发生错误: {str(e)}")
-        
-        print("\n")
 
 
 if __name__ == "__main__":
