@@ -5,28 +5,13 @@
 import os
 import sys
 import config
-from tools import get_tools
+from tools import get_tools, set_session_data
 from langchain_openai import ChatOpenAI
-from langchain.agents import AgentExecutor, create_react_agent
-from langchain.prompts import PromptTemplate
+from langchain_classic.agents import AgentExecutor, create_react_agent
+from langchain_classic.prompts import PromptTemplate
+import pandas as pd
 
-
-def create_agent():
-    if not config.OPENAI_API_KEY or config.OPENAI_API_KEY == "your-api-key-here":
-        print("错误: 请先配置API Key")
-        print("1. 复制 .env.example 为 .env")
-        print("2. 编辑 .env 文件，填入你的API Key")
-        return None
-    
-    llm_kwargs = {"model": config.MODEL_NAME, "temperature": 0}
-    if config.OPENAI_BASE_URL:
-        llm_kwargs["base_url"] = config.OPENAI_BASE_URL
-    
-    llm = ChatOpenAI(**llm_kwargs)
-    tools = get_tools()
-    
-    prompt = PromptTemplate.from_template(
-        """你是一个专业的数据分析助手。
+PROMPT_TEMPLATE = """你是一个专业的数据分析助手。
 
 你可以使用以下工具:
 
@@ -34,10 +19,10 @@ def create_agent():
 
 工具名称: {tool_names}
 
-使用工具时，请严格遵循以下格式（每行必须独立，不能跨行）:
+使用工具时，请严格遵循以下格式:
 
 Question: 用户的问题
-Thought: 简短思考要做什么（必须在一行内完成，不要换行）
+Thought: 简短思考要做什么
 Action: 要使用的工具名称，必须是 [{tool_names}] 中的一个
 Action Input: 工具的输入参数
 Observation: 工具的输出结果
@@ -51,10 +36,37 @@ Final Answer: 对用户问题的最终回答
 
 Question: {input}
 Thought: {agent_scratchpad}"""
-    )
+
+
+def create_agent(session_id: str):
+    if not config.OPENAI_API_KEY or config.OPENAI_API_KEY == "your-api-key-here":
+        print("错误: 请先配置API Key")
+        print("1. 复制 .env.example 为 .env")
+        print("2. 编辑 .env 文件，填入你的API Key")
+        return None
+    
+    llm_kwargs = {"model": config.MODEL_NAME, "temperature": 0}
+    if config.OPENAI_BASE_URL:
+        llm_kwargs["base_url"] = config.OPENAI_BASE_URL
+    
+    llm = ChatOpenAI(**llm_kwargs)
+    tools = get_tools(session_id)
+    prompt = PromptTemplate.from_template(PROMPT_TEMPLATE)
     
     agent = create_react_agent(llm, tools, prompt)
     return AgentExecutor(agent=agent, tools=tools, verbose=True, handle_parsing_errors=True, max_iterations=10)
+
+
+def load_demo_data():
+    demo_file = "titanic.csv"
+    if not os.path.exists(demo_file):
+        print(f"错误: 找不到演示数据文件 {demo_file}")
+        return None, None
+    
+    df = pd.read_csv(demo_file)
+    session_id = "demo_session"
+    set_session_data(session_id, df, demo_file)
+    return session_id, df
 
 
 def run_interactive(agent_executor):
@@ -100,11 +112,14 @@ def run_interactive(agent_executor):
 if __name__ == "__main__":
     print(f"使用模型: {config.MODEL_NAME}")
     
-    agent_executor = create_agent()
+    session_id, df = load_demo_data()
+    if not session_id:
+        sys.exit(1)
+    
+    print(f"已加载数据: {len(df)} 行, {len(df.columns)} 列")
+    
+    agent_executor = create_agent(session_id)
     if not agent_executor:
         sys.exit(1)
     
-    if len(sys.argv) > 1 and sys.argv[1] == "--demo":
-        demo_features(agent_executor)
-    else:
-        run_interactive(agent_executor)
+    run_interactive(agent_executor)
